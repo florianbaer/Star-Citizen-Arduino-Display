@@ -1,0 +1,26 @@
+# Arduino IDE
+*.elf
+*.bin
+*.hex
+*.map
+build/
+.build/
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Rust
+sender-rs/target/
+
+# IDE / editor
+.vscode/
+*.swp
+*.swo
+*~
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
