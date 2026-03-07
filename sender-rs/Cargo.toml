@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+hud-proto = { path = "../proto" }
 serialport = "4"
 clap = { version = "4", features = ["derive"] }
 rand = "0.8"

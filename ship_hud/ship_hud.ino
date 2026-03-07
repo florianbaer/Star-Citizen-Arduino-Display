@@ -1,11 +1,12 @@
 // Spaceship HUD Display for ESP32-2432S024C (Capacitive touch)
-// Receives telemetry via USB serial: SF:200,SB:100,SL:150,SR:255,HF:80,QF:40\n
+// Receives COBS-framed binary telemetry via USB serial
 // Touch chip: CST816S on I2C
 
 #include <lvgl.h>
 #include <TFT_eSPI.h>
 #include <Wire.h>
 #include "hud_widgets.h"
+#include "hud_proto.h"
 
 #define TFT_HOR_RES   320
 #define TFT_VER_RES   240
@@ -80,12 +81,24 @@ ShieldGauge shields[4];
 FuelBar hfuel, qfuel;
 ShipSilhouette ship;
 AlertIndicator alert;
-TelemetryParser telemetry;
+FrameDecoder decoder;
 
 bool anyCritical() {
   for (int i = 0; i < 4; i++)
     if (shields[i].value() < 85) return true;
   return false;
+}
+
+void handleTelemetry(const uint8_t* payload, int len) {
+  if (len < (int)sizeof(TelemetryMsg)) return;
+  TelemetryMsg msg;
+  memcpy(&msg, payload, sizeof(TelemetryMsg));
+  shields[0].setValue(msg.shield_front);
+  shields[2].setValue(msg.shield_back);
+  shields[3].setValue(msg.shield_left);
+  shields[1].setValue(msg.shield_right);
+  hfuel.setValue(msg.hydrogen_fuel);
+  qfuel.setValue(msg.quantum_fuel);
 }
 
 void setup() {
@@ -119,6 +132,7 @@ void setup() {
     ShieldGaugeConfig sc;
     sc.direction = dirs[i];
     shields[i].create(scr, sc);
+    shields[i].setValue(255);
   }
 
   ShipSilhouetteConfig shipCfg;
@@ -132,6 +146,7 @@ void setup() {
   hfCfg.labelOffsetY = -38;
   hfCfg.label = "H-FUEL";
   hfuel.create(scr, hfCfg);
+  hfuel.setValue(255);
 
   FuelBarConfig qfCfg;
   qfCfg.barOffsetY = -10;
@@ -139,13 +154,7 @@ void setup() {
   qfCfg.r = 180; qfCfg.g = 0; qfCfg.b = 220;
   qfCfg.label = "Q-FUEL";
   qfuel.create(scr, qfCfg);
-
-  telemetry.onField("SF", [](uint8_t v) { shields[0].setValue(v); });
-  telemetry.onField("SB", [](uint8_t v) { shields[2].setValue(v); });
-  telemetry.onField("SL", [](uint8_t v) { shields[3].setValue(v); });
-  telemetry.onField("SR", [](uint8_t v) { shields[1].setValue(v); });
-  telemetry.onField("HF", [](uint8_t v) { hfuel.setValue(v); });
-  telemetry.onField("QF", [](uint8_t v) { qfuel.setValue(v); });
+  qfuel.setValue(255);
 
   Serial.println("HUD ready. Waiting for telemetry...");
 }
@@ -155,9 +164,21 @@ void loop() {
   lastTick = millis();
   lv_timer_handler();
 
+  // Feed serial bytes to frame decoder
+  while (Serial.available()) {
+    decoder.feed(Serial.read());
+    if (decoder.available()) {
+      if (decoder.msgType() == MSG_TELEMETRY) {
+        uint8_t payload[sizeof(TelemetryMsg)];
+        int len = decoder.payload(payload, sizeof(payload));
+        handleTelemetry(payload, len);
+      }
+      decoder.clear();
+    }
+  }
+
   alert.setActive(anyCritical());
   alert.tick(millis());
-  telemetry.feed(Serial);
 
   delay(5);
 }

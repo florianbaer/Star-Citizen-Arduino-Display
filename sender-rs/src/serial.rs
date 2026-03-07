@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
+use hud_proto::frame::{self, MAX_FRAME};
+use hud_proto::messages::{MsgType, TelemetryMsg};
 use serialport::SerialPort;
 use std::io::Write;
 use std::time::Duration;
-
-use crate::protocol::Telemetry;
 
 pub struct HudSerial {
     port: Box<dyn SerialPort>,
@@ -18,10 +18,11 @@ impl HudSerial {
         Ok(Self { port })
     }
 
-    pub fn send(&mut self, telemetry: &Telemetry) -> Result<()> {
-        let csv = telemetry.to_csv();
+    pub fn send(&mut self, msg: &TelemetryMsg) -> Result<()> {
+        let mut buf = [0u8; MAX_FRAME];
+        let len = frame::frame(MsgType::Telemetry, msg.as_bytes(), &mut buf);
         self.port
-            .write_all(csv.as_bytes())
+            .write_all(&buf[..len])
             .context("Failed to write to serial port")?;
         self.port.flush().context("Failed to flush serial port")?;
         Ok(())
