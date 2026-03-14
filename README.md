@@ -1,3 +1,5 @@
+Not yet working (since no udp data accessible by star citizen)
+
 # Spaceship HUD
 
 A spaceship shield/fuel HUD for the **ESP32-2432S024C** (Cheap Yellow Display), built with LVGL. Receives binary telemetry over USB serial and displays 4 shield arc gauges, 2 fuel bars, a ship silhouette, and a blinking alert indicator.
