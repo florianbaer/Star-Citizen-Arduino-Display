@@ -20,6 +20,8 @@ __pycache__/
 *.pyc
 *.egg-info/
 .venv/
+msfs-sender/dist/
+msfs-sender/build/
 
 # IDE / editor
 .vscode/

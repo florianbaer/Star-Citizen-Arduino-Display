@@ -89,7 +89,11 @@ cargo run -- /dev/ttyUSB0 --baud 921600
 
 ### Sender — MSFS 2024 (Python)
 
-See [docs/MSFS_PLUGIN.md](docs/MSFS_PLUGIN.md) for full setup instructions.
+See [docs/MSFS_PLUGIN.md](docs/MSFS_PLUGIN.md) for full setup and installation instructions.
+
+**Pre-built .exe** — Download the `esp32-gyro-display-msfs-plugin` artifact from [GitHub Actions](../../actions), copy the `esp32-gyro-display` folder into your MSFS Community folder, and run `msfs-gyro-sender.exe COM6`.
+
+**From source:**
 
 ```sh
 cd msfs-sender

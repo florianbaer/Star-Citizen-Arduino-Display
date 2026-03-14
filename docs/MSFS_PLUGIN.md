@@ -2,47 +2,73 @@
 
 Reads aircraft attitude data from Microsoft Flight Simulator 2024 via SimConnect and displays an artificial horizon on the ESP32 display.
 
-## Prerequisites
+## Installation (Pre-built .exe)
 
-- **Windows 10/11** (SimConnect is Windows-only)
-- **MSFS 2024** installed and running
-- **Python 3.10+** (64-bit required)
-- **ESP32 display** connected via USB
+1. Download the `esp32-gyro-display-msfs-plugin` artifact from the latest [GitHub Actions build](../../actions)
+2. Extract the `esp32-gyro-display` folder
+3. Copy it into your MSFS 2024 **Community folder**:
+   - **Steam**: `%APPDATA%\Microsoft Flight Simulator 2024\Packages\Community\`
+   - **MS Store**: `%LOCALAPPDATA%\Packages\Microsoft.FlightSimulator_8wekyb3d8bbwe\LocalCache\Packages\Community\`
+4. Run `msfs-gyro-sender.exe` from inside the folder (or set up auto-start, see below)
 
-## Installation
+### Auto-start with MSFS (exe.xml)
+
+To launch the sender automatically when MSFS starts, add this to your `exe.xml`:
+
+- **Steam**: `%APPDATA%\Microsoft Flight Simulator 2024\exe.xml`
+- **MS Store**: `%LOCALAPPDATA%\Packages\Microsoft.FlightSimulator_8wekyb3d8bbwe\LocalCache\exe.xml`
+
+If the file doesn't exist, create it with this content:
+
+```xml
+<?xml version="1.0" encoding="windows-1252"?>
+<SimBase.Document Type="Launch" version="1,0">
+  <Descr>Launch</Descr>
+  <Filename>exe.xml</Filename>
+  <Disabled>False</Disabled>
+  <Launch.ManualLoad>False</Launch.ManualLoad>
+  <Launch.Addon>
+    <Name>ESP32 Gyroscope Display</Name>
+    <Disabled>False</Disabled>
+    <ManualLoad>False</ManualLoad>
+    <Path>FULL_PATH_TO\esp32-gyro-display\msfs-gyro-sender.exe</Path>
+    <CommandLine>COM6</CommandLine>
+  </Launch.Addon>
+</SimBase.Document>
+```
+
+Replace `FULL_PATH_TO` with the actual path and `COM6` with your ESP32 serial port.
+
+## Installation (From source)
+
+Requires **Windows 10/11**, **Python 3.10+ (64-bit)**, MSFS 2024, and the ESP32 display connected via USB.
 
 ```sh
 cd msfs-sender
 pip install -r requirements.txt
 ```
 
-Or install as a package:
-
-```sh
-cd msfs-sender
-pip install .
-```
-
-## Usage
-
-1. Flash the ESP32 with the updated `ship_hud` sketch
-2. Start MSFS 2024 and load into a flight
-3. Run the sender:
+### Usage
 
 ```sh
 python -m msfs_sender COM6
 ```
-
-### Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--baud` | 115200 | Serial baud rate |
 | `--hz` | 20 | Send rate in Hz |
 
+### Building the .exe locally
+
 ```sh
-python -m msfs_sender COM6 --baud 115200 --hz 30
+cd msfs-sender
+pip install pyinstaller pyserial SimConnect
+pyinstaller msfs_sender.spec
+python build_package.py
 ```
+
+The MSFS Community package will be in `dist/esp32-gyro-display/`.
 
 ## Switching Display Modes
 
@@ -55,7 +81,7 @@ The ESP32 display supports two modes:
 
 ## How It Works
 
-1. The Python sender connects to MSFS via the SimConnect SDK
+1. The sender connects to MSFS via the SimConnect SDK
 2. It reads `PLANE_PITCH_DEGREES`, `PLANE_BANK_DEGREES`, and `PLANE_HEADING_DEGREES_TRUE` (which return radians despite the names)
 3. Values are converted to tenths of degrees and packed into an `AttitudeMsg` (6 bytes: 3x int16 LE)
 4. The message is framed with COBS encoding + CRC8 checksum
@@ -75,13 +101,16 @@ The attitude message uses message type `0x02`:
 ## Troubleshooting
 
 **"OSError: [WinError 193] %1 is not a valid Win32 application"**
-→ You're using 32-bit Python. Install 64-bit Python.
+-> You're using 32-bit Python. Install 64-bit Python.
 
 **"SimConnect connection failed"**
-→ Make sure MSFS 2024 is running and you're in a flight (not the main menu).
+-> Make sure MSFS 2024 is running and you're in a flight (not the main menu).
 
 **Serial port not found**
-→ Check the port name in Device Manager. On Windows it's typically `COM3`-`COM9`.
+-> Check the port name in Device Manager. On Windows it's typically `COM3`-`COM9`.
 
 **No data on display**
-→ Verify baud rates match (default 115200). Make sure you're on the MSFS gyroscope screen (tap to toggle).
+-> Verify baud rates match (default 115200). Make sure you're on the MSFS gyroscope screen (tap to toggle).
+
+**exe.xml not working**
+-> Ensure the XML is well-formed (no extra whitespace in tags). The `<Path>` must be the full absolute path to the .exe.

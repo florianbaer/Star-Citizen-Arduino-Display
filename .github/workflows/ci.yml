@@ -31,8 +31,8 @@ jobs:
       - run: cargo build --manifest-path sender-rs/Cargo.toml
       - run: cargo clippy --manifest-path sender-rs/Cargo.toml -- -D warnings
 
-  msfs-sender-python:
-    name: Python MSFS sender
+  msfs-sender-test:
+    name: Python MSFS sender (lint + test)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,3 +42,30 @@ jobs:
       - run: pip install ruff pytest pyserial
       - run: ruff check msfs-sender/
       - run: cd msfs-sender && python -m pytest tests/ -v
+
+  msfs-sender-build:
+    name: Build MSFS plugin (.exe)
+    runs-on: windows-latest
+    needs: msfs-sender-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pyinstaller pyserial SimConnect
+
+      - name: Build exe with PyInstaller
+        working-directory: msfs-sender
+        run: pyinstaller msfs_sender.spec
+
+      - name: Build MSFS Community package
+        working-directory: msfs-sender
+        run: python build_package.py
+
+      - name: Upload MSFS plugin package
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-gyro-display-msfs-plugin
+          path: msfs-sender/dist/esp32-gyro-display/
