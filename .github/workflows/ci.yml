@@ -44,7 +44,7 @@ jobs:
       - run: cd msfs-sender && python -m pytest tests/ -v
 
   msfs-sender-build:
-    name: Build MSFS plugin (.exe)
+    name: Build MSFS sender (.exe)
     runs-on: windows-latest
     needs: msfs-sender-test
     steps:
@@ -60,12 +60,8 @@ jobs:
         working-directory: msfs-sender
         run: pyinstaller msfs_sender.spec
 
-      - name: Build MSFS Community package
-        working-directory: msfs-sender
-        run: python build_package.py
-
-      - name: Upload MSFS plugin package
+      - name: Upload exe
         uses: actions/upload-artifact@v4
         with:
-          name: esp32-gyro-display-msfs-plugin
-          path: msfs-sender/dist/esp32-gyro-display/
+          name: msfs-gyro-sender
+          path: msfs-sender/dist/msfs-gyro-sender.exe

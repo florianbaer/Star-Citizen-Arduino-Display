@@ -91,7 +91,7 @@ cargo run -- /dev/ttyUSB0 --baud 921600
 
 See [docs/MSFS_PLUGIN.md](docs/MSFS_PLUGIN.md) for full setup and installation instructions.
 
-**Pre-built .exe** — Download the `esp32-gyro-display-msfs-plugin` artifact from [GitHub Actions](../../actions), copy the `esp32-gyro-display` folder into your MSFS Community folder, and run `msfs-gyro-sender.exe COM6`.
+**Pre-built .exe** — Download `msfs-gyro-sender.exe` from [GitHub Actions](../../actions) and run `msfs-gyro-sender.exe COM6`. No Python needed.
 
 **From source:**
 

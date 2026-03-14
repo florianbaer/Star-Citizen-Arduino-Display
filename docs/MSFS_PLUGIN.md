@@ -1,57 +1,24 @@
-# MSFS 2024 Gyroscope Plugin
+# MSFS 2024 Gyroscope Sender
 
-Reads aircraft attitude data from Microsoft Flight Simulator 2024 via SimConnect and displays an artificial horizon on the ESP32 display.
+A companion app that reads aircraft attitude data from Microsoft Flight Simulator 2024 via SimConnect and sends it to the ESP32 display over USB serial.
 
 ## Installation (Pre-built .exe)
 
-1. Download the `esp32-gyro-display-msfs-plugin` artifact from the latest [GitHub Actions build](../../actions)
-2. Extract the `esp32-gyro-display` folder
-3. Copy it into your MSFS 2024 **Community folder**:
-   - **Steam**: `%APPDATA%\Microsoft Flight Simulator 2024\Packages\Community\`
-   - **MS Store**: `%LOCALAPPDATA%\Packages\Microsoft.FlightSimulator_8wekyb3d8bbwe\LocalCache\Packages\Community\`
-4. Run `msfs-gyro-sender.exe` from inside the folder (or set up auto-start, see below)
+1. Download `msfs-gyro-sender.exe` from the latest [GitHub Actions build](../../actions)
+2. Connect your ESP32 display via USB
+3. Start MSFS 2024 and load into a flight
+4. Run:
 
-### Auto-start with MSFS (exe.xml)
-
-To launch the sender automatically when MSFS starts, add this to your `exe.xml`:
-
-- **Steam**: `%APPDATA%\Microsoft Flight Simulator 2024\exe.xml`
-- **MS Store**: `%LOCALAPPDATA%\Packages\Microsoft.FlightSimulator_8wekyb3d8bbwe\LocalCache\exe.xml`
-
-If the file doesn't exist, create it with this content:
-
-```xml
-<?xml version="1.0" encoding="windows-1252"?>
-<SimBase.Document Type="Launch" version="1,0">
-  <Descr>Launch</Descr>
-  <Filename>exe.xml</Filename>
-  <Disabled>False</Disabled>
-  <Launch.ManualLoad>False</Launch.ManualLoad>
-  <Launch.Addon>
-    <Name>ESP32 Gyroscope Display</Name>
-    <Disabled>False</Disabled>
-    <ManualLoad>False</ManualLoad>
-    <Path>FULL_PATH_TO\esp32-gyro-display\msfs-gyro-sender.exe</Path>
-    <CommandLine>COM6</CommandLine>
-  </Launch.Addon>
-</SimBase.Document>
+```
+msfs-gyro-sender.exe COM6
 ```
 
-Replace `FULL_PATH_TO` with the actual path and `COM6` with your ESP32 serial port.
+That's it. The exe is a standalone Windows executable — no Python or other dependencies needed.
 
-## Installation (From source)
+### Options
 
-Requires **Windows 10/11**, **Python 3.10+ (64-bit)**, MSFS 2024, and the ESP32 display connected via USB.
-
-```sh
-cd msfs-sender
-pip install -r requirements.txt
 ```
-
-### Usage
-
-```sh
-python -m msfs_sender COM6
+msfs-gyro-sender.exe COM6 --baud 115200 --hz 30
 ```
 
 | Flag | Default | Description |
@@ -59,16 +26,24 @@ python -m msfs_sender COM6
 | `--baud` | 115200 | Serial baud rate |
 | `--hz` | 20 | Send rate in Hz |
 
+## Installation (From source)
+
+Requires **Windows 10/11**, **Python 3.10+ (64-bit)**.
+
+```sh
+cd msfs-sender
+pip install -r requirements.txt
+python -m msfs_sender COM6
+```
+
 ### Building the .exe locally
 
 ```sh
 cd msfs-sender
 pip install pyinstaller pyserial SimConnect
 pyinstaller msfs_sender.spec
-python build_package.py
+# Output: dist/msfs-gyro-sender.exe
 ```
-
-The MSFS Community package will be in `dist/esp32-gyro-display/`.
 
 ## Switching Display Modes
 
@@ -100,9 +75,6 @@ The attitude message uses message type `0x02`:
 
 ## Troubleshooting
 
-**"OSError: [WinError 193] %1 is not a valid Win32 application"**
--> You're using 32-bit Python. Install 64-bit Python.
-
 **"SimConnect connection failed"**
 -> Make sure MSFS 2024 is running and you're in a flight (not the main menu).
 
@@ -111,6 +83,3 @@ The attitude message uses message type `0x02`:
 
 **No data on display**
 -> Verify baud rates match (default 115200). Make sure you're on the MSFS gyroscope screen (tap to toggle).
-
-**exe.xml not working**
--> Ensure the XML is well-formed (no extra whitespace in tags). The `<Path>` must be the full absolute path to the .exe.
