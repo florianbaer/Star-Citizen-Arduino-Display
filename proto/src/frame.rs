@@ -66,7 +66,7 @@ pub fn deframe<'a>(data: &[u8], buf: &'a mut [u8]) -> Option<DeframedMsg<'a>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::TelemetryMsg;
+    use crate::messages::{AttitudeMsg, TelemetryMsg};
 
     #[test]
     fn roundtrip_telemetry() {
@@ -114,5 +114,27 @@ mod tests {
 
         let mut buf = [0u8; MAX_PAYLOAD + 2];
         assert!(deframe(&wire[1..wire_len - 1], &mut buf).is_none());
+    }
+
+    #[test]
+    fn roundtrip_attitude() {
+        let msg = AttitudeMsg {
+            pitch: -450, // nose down 45 degrees
+            roll: 300,   // 30 degrees right bank
+            heading: 2700, // 270 degrees
+        };
+
+        let mut wire = [0u8; MAX_FRAME];
+        let wire_len = frame(MsgType::Attitude, msg.as_bytes(), &mut wire);
+
+        assert_eq!(wire[0], 0x00);
+        assert_eq!(wire[wire_len - 1], 0x00);
+
+        let mut buf = [0u8; MAX_PAYLOAD + 2];
+        let result = deframe(&wire[1..wire_len - 1], &mut buf).unwrap();
+        assert_eq!(result.msg_type, MsgType::Attitude);
+
+        let decoded = AttitudeMsg::from_bytes(result.payload).unwrap();
+        assert_eq!(decoded, msg);
     }
 }

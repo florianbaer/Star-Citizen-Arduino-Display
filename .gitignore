@@ -15,6 +15,12 @@ build/
 sender-rs/target/
 proto/target/
 
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+
 # IDE / editor
 .vscode/
 *.swp

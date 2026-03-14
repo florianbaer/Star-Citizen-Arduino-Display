@@ -1,4 +1,5 @@
 // Spaceship HUD Display for ESP32-2432S024C (Capacitive touch)
+// Supports two modes: Star Citizen HUD and MSFS 2024 Gyroscope
 // Receives COBS-framed binary telemetry via USB serial
 // Touch chip: CST816S on I2C
 
@@ -75,12 +76,26 @@ void my_touchpad_read(lv_indev_t * indev, lv_indev_data_t * data) {
   }
 }
 
-// ---- HUD widgets ----
+// ---- Mode switching ----
+
+lv_obj_t* scrHud = nullptr;   // Star Citizen HUD screen
+lv_obj_t* scrGyro = nullptr;  // MSFS Gyroscope screen
+bool msfsMode = false;
+bool touchWasPressed = false;
+
+// ---- HUD widgets (Star Citizen screen) ----
 
 ShieldGauge shields[4];
 FuelBar hfuel, qfuel;
 ShipSilhouette ship;
 AlertIndicator alert;
+
+// ---- Gyro widget (MSFS screen) ----
+
+GyroHorizon gyro;
+
+// ---- Shared ----
+
 FrameDecoder decoder;
 
 bool anyCritical() {
@@ -101,6 +116,22 @@ void handleTelemetry(const uint8_t* payload, int len) {
   qfuel.setValue(msg.quantum_fuel);
 }
 
+void handleAttitude(const uint8_t* payload, int len) {
+  if (len < (int)sizeof(AttitudeMsg)) return;
+  AttitudeMsg msg;
+  memcpy(&msg, payload, sizeof(AttitudeMsg));
+  gyro.setValue(msg.pitch, msg.roll, msg.heading);
+}
+
+void toggleMode() {
+  msfsMode = !msfsMode;
+  if (msfsMode) {
+    lv_scr_load(scrGyro);
+  } else {
+    lv_scr_load(scrHud);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting HUD...");
@@ -119,33 +150,33 @@ void setup() {
   lv_display_set_flush_cb(disp, my_disp_flush);
   lv_display_set_buffers(disp, draw_buf, NULL, DRAW_BUF_SIZE, LV_DISPLAY_RENDER_MODE_PARTIAL);
 
-  lv_obj_t *scr = lv_scr_act();
-  lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
-
   lv_indev_t * indev = lv_indev_create();
   lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
   lv_indev_set_read_cb(indev, my_touchpad_read);
 
-  // Create HUD
+  // ---- Screen 1: Star Citizen HUD ----
+  scrHud = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(scrHud, lv_color_black(), 0);
+
   const ShieldDir dirs[] = {ShieldDir::FWD, ShieldDir::STB, ShieldDir::AFT, ShieldDir::PRT};
   for (int i = 0; i < 4; i++) {
     ShieldGaugeConfig sc;
     sc.direction = dirs[i];
-    shields[i].create(scr, sc);
+    shields[i].create(scrHud, sc);
     shields[i].setValue(255);
   }
 
   ShipSilhouetteConfig shipCfg;
-  ship.create(scr, shipCfg);
+  ship.create(scrHud, shipCfg);
 
   AlertIndicatorConfig alertCfg;
-  alert.create(scr, alertCfg);
+  alert.create(scrHud, alertCfg);
 
   FuelBarConfig hfCfg;
   hfCfg.barOffsetY = -36;
   hfCfg.labelOffsetY = -38;
   hfCfg.label = "H-FUEL";
-  hfuel.create(scr, hfCfg);
+  hfuel.create(scrHud, hfCfg);
   hfuel.setValue(255);
 
   FuelBarConfig qfCfg;
@@ -153,10 +184,23 @@ void setup() {
   qfCfg.labelOffsetY = -12;
   qfCfg.r = 180; qfCfg.g = 0; qfCfg.b = 220;
   qfCfg.label = "Q-FUEL";
-  qfuel.create(scr, qfCfg);
+  qfuel.create(scrHud, qfCfg);
   qfuel.setValue(255);
 
-  Serial.println("HUD ready. Waiting for telemetry...");
+  // ---- Screen 2: MSFS Gyroscope ----
+  scrGyro = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(scrGyro, lv_color_black(), 0);
+
+  GyroHorizonConfig gyroCfg;
+  gyroCfg.cx = 160;
+  gyroCfg.cy = 105;
+  gyroCfg.radius = 90;
+  gyro.create(scrGyro, gyroCfg);
+
+  // Start with Star Citizen HUD
+  lv_scr_load(scrHud);
+
+  Serial.println("HUD ready. Touch to switch modes. Waiting for data...");
 }
 
 void loop() {
@@ -172,13 +216,27 @@ void loop() {
         uint8_t payload[sizeof(TelemetryMsg)];
         int len = decoder.payload(payload, sizeof(payload));
         handleTelemetry(payload, len);
+      } else if (decoder.msgType() == MSG_ATTITUDE) {
+        uint8_t payload[sizeof(AttitudeMsg)];
+        int len = decoder.payload(payload, sizeof(payload));
+        handleAttitude(payload, len);
       }
       decoder.clear();
     }
   }
 
-  alert.setActive(anyCritical());
-  alert.tick(millis());
+  // Touch to toggle mode (detect rising edge)
+  uint16_t tx, ty;
+  bool pressed = touchRead(&tx, &ty);
+  if (pressed && !touchWasPressed) {
+    toggleMode();
+  }
+  touchWasPressed = pressed;
+
+  if (!msfsMode) {
+    alert.setActive(anyCritical());
+    alert.tick(millis());
+  }
 
   delay(5);
 }
