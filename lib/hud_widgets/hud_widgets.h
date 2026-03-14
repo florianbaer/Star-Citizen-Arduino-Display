@@ -6,3 +6,6 @@
 #include "ShipSilhouette.h"
 #include "AlertIndicator.h"
 #include "GyroHorizon.h"
+#include "EngineGauges.h"
+#include "FlightData.h"
+#include "GForceMeter.h"

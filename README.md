@@ -2,11 +2,14 @@
 
 A spaceship shield/fuel HUD for the **ESP32-2432S024C** (Cheap Yellow Display), built with LVGL. Receives binary telemetry over USB serial and displays 4 shield arc gauges, 2 fuel bars, a ship silhouette, and a blinking alert indicator.
 
-Supports two switchable display modes:
+Supports 5 switchable display screens:
 - **Star Citizen HUD** — Shield gauges, fuel bars, alerts
-- **MSFS 2024 Gyroscope** — Artificial horizon with pitch, roll, and heading
+- **MSFS Gyroscope** — Artificial horizon with pitch, roll, and heading
+- **MSFS Engine Gauges** — RPM arc, throttle bar, oil temp/pressure, fuel flow
+- **MSFS Flight Data** — Airspeed, altitude, vertical speed, ground speed
+- **MSFS G-Force Meter** — Vertical/lateral/longitudinal G with peak tracking
 
-Tap the touchscreen to toggle between modes.
+Tap the touchscreen to cycle through screens.
 
 ## Hardware
 
@@ -30,6 +33,9 @@ Binary frames over 115200 baud USB serial using COBS framing with CRC8 error che
 |----|------|-----------|---------|
 | `0x01` | Telemetry | PC -> ESP32 | 6 bytes: SF, SB, SL, SR, HF, QF (all 0-255) |
 | `0x02` | Attitude | PC -> ESP32 | 6 bytes: pitch, roll, heading (int16 LE, tenths of degrees) |
+| `0x03` | Engine | PC -> ESP32 | 6 bytes: rpm(u16), throttle, fuel_flow, oil_temp, oil_press |
+| `0x04` | FlightData | PC -> ESP32 | 10 bytes: airspeed(u16), altitude(i32), vspeed(i16), gs(u16) |
+| `0x05` | GForce | PC -> ESP32 | 6 bytes: gx, gy, gz (int16 LE, hundredths of G) |
 
 The protocol is shared between:
 - **`proto/`** — Rust `no_std` crate (used by the senders)
@@ -56,6 +62,9 @@ The protocol is shared between:
 │       ├── ShipSilhouette.h  # Line-drawn ship shape
 │       ├── AlertIndicator.h  # Blinking warning + heartbeat LED
 │       ├── GyroHorizon.h     # Artificial horizon (MSFS gyroscope)
+│       ├── EngineGauges.h    # RPM, throttle, oil, fuel flow (MSFS)
+│       ├── FlightData.h      # Airspeed, altitude, vspeed (MSFS)
+│       ├── GForceMeter.h     # G-force arcs with peak tracking (MSFS)
 │       └── ColorScale.h      # Threshold-based color mapping
 ├── sender-rs/                # Rust telemetry sender (Star Citizen)
 │   └── src/
@@ -69,7 +78,7 @@ The protocol is shared between:
 │   └── tests/
 │       └── test_protocol.py  # Protocol unit tests
 └── ship_hud/
-    └── ship_hud.ino          # Main ESP32 sketch (dual-mode)
+    └── ship_hud.ino          # Main ESP32 sketch (5-screen cycling)
 ```
 
 ## Quick Start

@@ -78,9 +78,9 @@ void my_touchpad_read(lv_indev_t * indev, lv_indev_data_t * data) {
 
 // ---- Mode switching ----
 
-lv_obj_t* scrHud = nullptr;   // Star Citizen HUD screen
-lv_obj_t* scrGyro = nullptr;  // MSFS Gyroscope screen
-bool msfsMode = false;
+static const int NUM_SCREENS = 5;
+lv_obj_t* screens[NUM_SCREENS] = {};
+int currentScreen = 0;
 bool touchWasPressed = false;
 uint32_t lastToggleMs = 0;
 static const uint32_t DEBOUNCE_MS = 300; // prevent accidental double-tap
@@ -92,9 +92,12 @@ FuelBar hfuel, qfuel;
 ShipSilhouette ship;
 AlertIndicator alert;
 
-// ---- Gyro widget (MSFS screen) ----
+// ---- MSFS widgets ----
 
 GyroHorizon gyro;
+EngineGauges engine;
+FlightData flightData;
+GForceMeter gforce;
 
 // ---- Shared ----
 
@@ -125,10 +128,32 @@ void handleAttitude(const uint8_t* payload, int len) {
   gyro.setValue(msg.pitch, msg.roll, msg.heading);
 }
 
+void handleEngine(const uint8_t* payload, int len) {
+  if (len < (int)sizeof(EngineMsg)) return;
+  EngineMsg msg;
+  memcpy(&msg, payload, sizeof(EngineMsg));
+  engine.setValue(msg.rpm, msg.throttle, msg.fuel_flow, msg.oil_temp, msg.oil_press);
+}
+
+void handleFlightData(const uint8_t* payload, int len) {
+  if (len < (int)sizeof(FlightDataMsg)) return;
+  FlightDataMsg msg;
+  memcpy(&msg, payload, sizeof(FlightDataMsg));
+  flightData.setValue(msg.airspeed, msg.altitude, msg.vspeed, msg.ground_speed);
+}
+
+void handleGForce(const uint8_t* payload, int len) {
+  if (len < (int)sizeof(GForceMsg)) return;
+  GForceMsg msg;
+  memcpy(&msg, payload, sizeof(GForceMsg));
+  gforce.setValue(msg.gforce_x, msg.gforce_y, msg.gforce_z);
+}
+
 void toggleMode() {
-  if (!scrHud || !scrGyro) return;
-  msfsMode = !msfsMode;
-  lv_scr_load(msfsMode ? scrGyro : scrHud);
+  currentScreen = (currentScreen + 1) % NUM_SCREENS;
+  if (screens[currentScreen]) {
+    lv_scr_load(screens[currentScreen]);
+  }
 }
 
 void setup() {
@@ -153,29 +178,29 @@ void setup() {
   lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
   lv_indev_set_read_cb(indev, my_touchpad_read);
 
-  // ---- Screen 1: Star Citizen HUD ----
-  scrHud = lv_obj_create(NULL);
-  lv_obj_set_style_bg_color(scrHud, lv_color_black(), 0);
+  // ---- Screen 0: Star Citizen HUD ----
+  screens[0] = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(screens[0], lv_color_black(), 0);
 
   const ShieldDir dirs[] = {ShieldDir::FWD, ShieldDir::STB, ShieldDir::AFT, ShieldDir::PRT};
   for (int i = 0; i < 4; i++) {
     ShieldGaugeConfig sc;
     sc.direction = dirs[i];
-    shields[i].create(scrHud, sc);
+    shields[i].create(screens[0], sc);
     shields[i].setValue(255);
   }
 
   ShipSilhouetteConfig shipCfg;
-  ship.create(scrHud, shipCfg);
+  ship.create(screens[0], shipCfg);
 
   AlertIndicatorConfig alertCfg;
-  alert.create(scrHud, alertCfg);
+  alert.create(screens[0], alertCfg);
 
   FuelBarConfig hfCfg;
   hfCfg.barOffsetY = -36;
   hfCfg.labelOffsetY = -38;
   hfCfg.label = "H-FUEL";
-  hfuel.create(scrHud, hfCfg);
+  hfuel.create(screens[0], hfCfg);
   hfuel.setValue(255);
 
   FuelBarConfig qfCfg;
@@ -183,23 +208,38 @@ void setup() {
   qfCfg.labelOffsetY = -12;
   qfCfg.r = 180; qfCfg.g = 0; qfCfg.b = 220;
   qfCfg.label = "Q-FUEL";
-  qfuel.create(scrHud, qfCfg);
+  qfuel.create(screens[0], qfCfg);
   qfuel.setValue(255);
 
-  // ---- Screen 2: MSFS Gyroscope ----
-  scrGyro = lv_obj_create(NULL);
-  lv_obj_set_style_bg_color(scrGyro, lv_color_black(), 0);
+  // ---- Screen 1: MSFS Gyroscope ----
+  screens[1] = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(screens[1], lv_color_black(), 0);
 
   GyroHorizonConfig gyroCfg;
   gyroCfg.cx = 160;
   gyroCfg.cy = 105;
   gyroCfg.radius = 90;
-  gyro.create(scrGyro, gyroCfg);
+  gyro.create(screens[1], gyroCfg);
+
+  // ---- Screen 2: MSFS Engine Gauges ----
+  screens[2] = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(screens[2], lv_color_black(), 0);
+  engine.create(screens[2]);
+
+  // ---- Screen 3: MSFS Flight Data ----
+  screens[3] = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(screens[3], lv_color_black(), 0);
+  flightData.create(screens[3]);
+
+  // ---- Screen 4: MSFS G-Force Meter ----
+  screens[4] = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(screens[4], lv_color_black(), 0);
+  gforce.create(screens[4]);
 
   // Start with Star Citizen HUD
-  lv_scr_load(scrHud);
+  lv_scr_load(screens[0]);
 
-  Serial.println("HUD ready. Touch to switch modes. Waiting for data...");
+  Serial.println("HUD ready. Touch to cycle screens (5 modes). Waiting for data...");
 }
 
 void loop() {
@@ -211,14 +251,24 @@ void loop() {
   while (Serial.available()) {
     decoder.feed(Serial.read());
     if (decoder.available()) {
-      if (decoder.msgType() == MSG_TELEMETRY) {
-        uint8_t payload[sizeof(TelemetryMsg)];
-        int len = decoder.payload(payload, sizeof(payload));
-        handleTelemetry(payload, len);
-      } else if (decoder.msgType() == MSG_ATTITUDE) {
-        uint8_t payload[sizeof(AttitudeMsg)];
-        int len = decoder.payload(payload, sizeof(payload));
-        handleAttitude(payload, len);
+      uint8_t payload[32]; // large enough for any message
+      int len = decoder.payload(payload, sizeof(payload));
+      switch (decoder.msgType()) {
+        case MSG_TELEMETRY:
+          handleTelemetry(payload, len);
+          break;
+        case MSG_ATTITUDE:
+          handleAttitude(payload, len);
+          break;
+        case MSG_ENGINE:
+          handleEngine(payload, len);
+          break;
+        case MSG_FLIGHT_DATA:
+          handleFlightData(payload, len);
+          break;
+        case MSG_GFORCE:
+          handleGForce(payload, len);
+          break;
       }
       decoder.clear();
     }
@@ -233,7 +283,7 @@ void loop() {
   }
   touchWasPressed = pressed;
 
-  if (!msfsMode) {
+  if (currentScreen == 0) {
     alert.setActive(anyCritical());
     alert.tick(millis());
   }

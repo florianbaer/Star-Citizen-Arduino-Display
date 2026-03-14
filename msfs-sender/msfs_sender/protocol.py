@@ -75,6 +75,9 @@ def cobs_decode(data: bytes) -> bytes:
 
 
 MSG_ATTITUDE = 0x02
+MSG_ENGINE = 0x03
+MSG_FLIGHT_DATA = 0x04
+MSG_GFORCE = 0x05
 
 
 def frame_attitude(pitch_tenths: int, roll_tenths: int, heading_tenths: int) -> bytes:
@@ -93,4 +96,58 @@ def frame_attitude(pitch_tenths: int, roll_tenths: int, heading_tenths: int) -> 
     checksum = crc8(raw)
     raw_with_crc = raw + bytes([checksum])
     encoded = cobs_encode(raw_with_crc)
+    return b"\x00" + encoded + b"\x00"
+
+
+def frame_engine(rpm: int, throttle: int, fuel_flow: int, oil_temp: int, oil_press: int) -> bytes:
+    """Build a framed engine message ready for serial transmission.
+
+    Args:
+        rpm: Engine RPM (0-65535)
+        throttle: Throttle percentage (0-100)
+        fuel_flow: Fuel flow mapped 0-255
+        oil_temp: Oil temperature mapped 0-255
+        oil_press: Oil pressure mapped 0-255
+
+    Returns:
+        Complete wire frame: [0x00] [COBS-encoded: msg_type | payload | CRC8] [0x00]
+    """
+    raw = struct.pack("<BHBBBB", MSG_ENGINE, rpm, throttle, fuel_flow, oil_temp, oil_press)
+    checksum = crc8(raw)
+    encoded = cobs_encode(raw + bytes([checksum]))
+    return b"\x00" + encoded + b"\x00"
+
+
+def frame_flight_data(airspeed: int, altitude: int, vspeed: int, ground_speed: int) -> bytes:
+    """Build a framed flight data message ready for serial transmission.
+
+    Args:
+        airspeed: Indicated airspeed in tenths of knots (0-65535)
+        altitude: Altitude in feet (signed int32)
+        vspeed: Vertical speed in fpm (signed int16)
+        ground_speed: Ground speed in tenths of knots (0-65535)
+
+    Returns:
+        Complete wire frame: [0x00] [COBS-encoded: msg_type | payload | CRC8] [0x00]
+    """
+    raw = struct.pack("<BHihH", MSG_FLIGHT_DATA, airspeed, altitude, vspeed, ground_speed)
+    checksum = crc8(raw)
+    encoded = cobs_encode(raw + bytes([checksum]))
+    return b"\x00" + encoded + b"\x00"
+
+
+def frame_gforce(gx: int, gy: int, gz: int) -> bytes:
+    """Build a framed G-force message ready for serial transmission.
+
+    Args:
+        gx: Longitudinal G in hundredths (-32768 to +32767)
+        gy: Vertical G in hundredths (~100 = 1G level flight)
+        gz: Lateral G in hundredths (-32768 to +32767)
+
+    Returns:
+        Complete wire frame: [0x00] [COBS-encoded: msg_type | payload | CRC8] [0x00]
+    """
+    raw = struct.pack("<Bhhh", MSG_GFORCE, gx, gy, gz)
+    checksum = crc8(raw)
+    encoded = cobs_encode(raw + bytes([checksum]))
     return b"\x00" + encoded + b"\x00"
