@@ -26,6 +26,37 @@ msfs-gyro-sender.exe COM6 --baud 115200 --hz 30
 | `--baud` | 115200 | Serial baud rate |
 | `--hz` | 20 | Send rate in Hz |
 
+## Auto-start with MSFS
+
+MSFS can automatically launch companion apps on startup via an `exe.xml` file.
+
+**File location:**
+- **Steam**: `%APPDATA%\Microsoft Flight Simulator 2024\exe.xml`
+- **MS Store**: `%LOCALAPPDATA%\Packages\Microsoft.FlightSimulator_8wekyb3d8bbwe\LocalCache\exe.xml`
+
+If the file doesn't exist, create it. If it already exists, just add the `<Launch.Addon>` block inside the existing `<SimBase.Document>`.
+
+```xml
+<?xml version="1.0" encoding="windows-1252"?>
+<SimBase.Document Type="Launch" version="1,0">
+  <Descr>Launch</Descr>
+  <Filename>exe.xml</Filename>
+  <Disabled>False</Disabled>
+  <Launch.ManualLoad>False</Launch.ManualLoad>
+  <Launch.Addon>
+    <Name>ESP32 Gyroscope Display</Name>
+    <Disabled>False</Disabled>
+    <ManualLoad>False</ManualLoad>
+    <Path>C:\Your\Path\msfs-gyro-sender.exe</Path>
+    <CommandLine>COM6</CommandLine>
+  </Launch.Addon>
+</SimBase.Document>
+```
+
+Replace `C:\Your\Path\` with the actual folder where you saved the exe, and `COM6` with your ESP32 serial port.
+
+To disable auto-start later, change `<Disabled>False</Disabled>` to `<Disabled>True</Disabled>`.
+
 ## Installation (From source)
 
 Requires **Windows 10/11**, **Python 3.10+ (64-bit)**.
