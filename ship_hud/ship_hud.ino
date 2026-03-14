@@ -82,6 +82,8 @@ lv_obj_t* scrHud = nullptr;   // Star Citizen HUD screen
 lv_obj_t* scrGyro = nullptr;  // MSFS Gyroscope screen
 bool msfsMode = false;
 bool touchWasPressed = false;
+uint32_t lastToggleMs = 0;
+static const uint32_t DEBOUNCE_MS = 300; // prevent accidental double-tap
 
 // ---- HUD widgets (Star Citizen screen) ----
 
@@ -124,12 +126,9 @@ void handleAttitude(const uint8_t* payload, int len) {
 }
 
 void toggleMode() {
+  if (!scrHud || !scrGyro) return;
   msfsMode = !msfsMode;
-  if (msfsMode) {
-    lv_scr_load(scrGyro);
-  } else {
-    lv_scr_load(scrHud);
-  }
+  lv_scr_load(msfsMode ? scrGyro : scrHud);
 }
 
 void setup() {
@@ -225,11 +224,12 @@ void loop() {
     }
   }
 
-  // Touch to toggle mode (detect rising edge)
+  // Touch to toggle mode (rising edge with debounce)
   uint16_t tx, ty;
   bool pressed = touchRead(&tx, &ty);
-  if (pressed && !touchWasPressed) {
+  if (pressed && !touchWasPressed && (millis() - lastToggleMs > DEBOUNCE_MS)) {
     toggleMode();
+    lastToggleMs = millis();
   }
   touchWasPressed = pressed;
 
