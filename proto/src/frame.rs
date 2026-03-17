@@ -66,7 +66,7 @@ pub fn deframe<'a>(data: &[u8], buf: &'a mut [u8]) -> Option<DeframedMsg<'a>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::messages::TelemetryMsg;
+    use crate::messages::{AttitudeMsg, EngineMsg, FlightDataMsg, GForceMsg, TelemetryMsg};
 
     #[test]
     fn roundtrip_telemetry() {
@@ -115,4 +115,76 @@ mod tests {
         let mut buf = [0u8; MAX_PAYLOAD + 2];
         assert!(deframe(&wire[1..wire_len - 1], &mut buf).is_none());
     }
+
+    #[test]
+    fn roundtrip_attitude() {
+        let msg = AttitudeMsg {
+            pitch: -450, // nose down 45 degrees
+            roll: 300,   // 30 degrees right bank
+            heading: 2700, // 270 degrees
+        };
+
+        let mut wire = [0u8; MAX_FRAME];
+        let wire_len = frame(MsgType::Attitude, msg.as_bytes(), &mut wire);
+
+        assert_eq!(wire[0], 0x00);
+        assert_eq!(wire[wire_len - 1], 0x00);
+
+        let mut buf = [0u8; MAX_PAYLOAD + 2];
+        let result = deframe(&wire[1..wire_len - 1], &mut buf).unwrap();
+        assert_eq!(result.msg_type, MsgType::Attitude);
+
+        let decoded = AttitudeMsg::from_bytes(result.payload).unwrap();
+        assert_eq!(decoded, msg);
+    }
+
+    #[test]
+    fn roundtrip_engine() {
+        let msg = EngineMsg {
+            rpm: 2450,
+            throttle: 75,
+            fuel_flow: 128,
+            oil_temp: 200,
+            oil_press: 180,
+        };
+        let mut wire = [0u8; MAX_FRAME];
+        let wire_len = frame(MsgType::Engine, msg.as_bytes(), &mut wire);
+        let mut buf = [0u8; MAX_PAYLOAD + 2];
+        let result = deframe(&wire[1..wire_len - 1], &mut buf).unwrap();
+        assert_eq!(result.msg_type, MsgType::Engine);
+        assert_eq!(EngineMsg::from_bytes(result.payload).unwrap(), msg);
+    }
+
+    #[test]
+    fn roundtrip_flight_data() {
+        let msg = FlightDataMsg {
+            airspeed: 1250,    // 125.0 kts
+            altitude: -50,     // below sea level
+            vspeed: -1500,     // descending
+            ground_speed: 1400, // 140.0 kts
+        };
+        let mut wire = [0u8; MAX_FRAME];
+        let wire_len = frame(MsgType::FlightData, msg.as_bytes(), &mut wire);
+        let mut buf = [0u8; MAX_PAYLOAD + 2];
+        let result = deframe(&wire[1..wire_len - 1], &mut buf).unwrap();
+        assert_eq!(result.msg_type, MsgType::FlightData);
+        assert_eq!(FlightDataMsg::from_bytes(result.payload).unwrap(), msg);
+    }
+
+    #[test]
+    fn roundtrip_gforce() {
+        let msg = GForceMsg {
+            gforce_x: -15,  // -0.15G forward
+            gforce_y: 120,  // 1.20G vertical
+            gforce_z: 5,    // 0.05G lateral
+        };
+        let mut wire = [0u8; MAX_FRAME];
+        let wire_len = frame(MsgType::GForce, msg.as_bytes(), &mut wire);
+        let mut buf = [0u8; MAX_PAYLOAD + 2];
+        let result = deframe(&wire[1..wire_len - 1], &mut buf).unwrap();
+        assert_eq!(result.msg_type, MsgType::GForce);
+        assert_eq!(GForceMsg::from_bytes(result.payload).unwrap(), msg);
+    }
+
+
 }

@@ -4,6 +4,15 @@ Not yet working (since no udp data accessible by star citizen)
 
 A spaceship shield/fuel HUD for the **ESP32-2432S024C** (Cheap Yellow Display), built with LVGL. Receives binary telemetry over USB serial and displays 4 shield arc gauges, 2 fuel bars, a ship silhouette, and a blinking alert indicator.
 
+Supports 5 switchable display screens:
+- **Star Citizen HUD** — Shield gauges, fuel bars, alerts
+- **MSFS Gyroscope** — Artificial horizon with pitch, roll, and heading
+- **MSFS Engine Gauges** — RPM arc, throttle bar, oil temp/pressure, fuel flow
+- **MSFS Flight Data** — Airspeed, altitude, vertical speed, ground speed
+- **MSFS G-Force Meter** — Vertical/lateral/longitudinal G with peak tracking
+
+Tap the touchscreen to cycle through screens.
+
 ## Hardware
 
 - **Board**: ESP32-2432S024C (2.4" 320x240 ILI9341, capacitive touch CST816S)
@@ -25,15 +34,18 @@ Binary frames over 115200 baud USB serial using COBS framing with CRC8 error che
 | ID | Name | Direction | Payload |
 |----|------|-----------|---------|
 | `0x01` | Telemetry | PC -> ESP32 | 6 bytes: SF, SB, SL, SR, HF, QF (all 0-255) |
+| `0x02` | Attitude | PC -> ESP32 | 6 bytes: pitch, roll, heading (int16 LE, tenths of degrees) |
+| `0x03` | Engine | PC -> ESP32 | 6 bytes: rpm(u16), throttle, fuel_flow, oil_temp, oil_press |
+| `0x04` | FlightData | PC -> ESP32 | 10 bytes: airspeed(u16), altitude(i32), vspeed(i16), gs(u16) |
+| `0x05` | GForce | PC -> ESP32 | 6 bytes: gx, gy, gz (int16 LE, hundredths of G) |
 
 The protocol is shared between:
-- **`proto/`** — Rust `no_std` crate (used by the sender)
+- **`proto/`** — Rust `no_std` crate (used by the senders)
 - **`lib/hud_proto/`** — C headers (used by the ESP32 sketch)
 
 ## Project Structure
 
 ```
-displayh/
 ├── proto/                    # Shared Rust protocol crate (no_std)
 │   └── src/
 │       ├── cobs.rs           # COBS encode/decode
@@ -51,13 +63,24 @@ displayh/
 │       ├── FuelBar.h         # Horizontal fuel bar
 │       ├── ShipSilhouette.h  # Line-drawn ship shape
 │       ├── AlertIndicator.h  # Blinking warning + heartbeat LED
+│       ├── GyroHorizon.h     # Artificial horizon (MSFS gyroscope)
+│       ├── EngineGauges.h    # RPM, throttle, oil, fuel flow (MSFS)
+│       ├── FlightData.h      # Airspeed, altitude, vspeed (MSFS)
+│       ├── GForceMeter.h     # G-force arcs with peak tracking (MSFS)
 │       └── ColorScale.h      # Threshold-based color mapping
-├── sender-rs/                # Rust telemetry sender
+├── sender-rs/                # Rust telemetry sender (Star Citizen)
 │   └── src/
 │       ├── main.rs           # CLI, 60Hz interpolated send loop
 │       └── serial.rs         # Serial port + frame encoding
+├── msfs-sender/              # Python MSFS 2024 attitude sender
+│   ├── msfs_sender/
+│   │   ├── __main__.py       # CLI entry point
+│   │   ├── protocol.py       # COBS + CRC8 framing
+│   │   └── simconnect_source.py  # SimConnect wrapper
+│   └── tests/
+│       └── test_protocol.py  # Protocol unit tests
 └── ship_hud/
-    └── ship_hud.ino          # Main ESP32 sketch
+    └── ship_hud.ino          # Main ESP32 sketch (5-screen cycling)
 ```
 
 ## Quick Start
@@ -66,13 +89,28 @@ displayh/
 
 See [docs/SETUP.md](docs/SETUP.md) for full Arduino IDE and PlatformIO setup instructions.
 
-### Sender (Rust)
+### Sender — Star Citizen (Rust)
 
 ```sh
 cd sender-rs
 cargo run -- COM6                    # default: 5s interval, 115200 baud
 cargo run -- COM6 --interval 2       # faster changes
 cargo run -- /dev/ttyUSB0 --baud 921600
+```
+
+### Sender — MSFS 2024 (Python)
+
+See [docs/MSFS_PLUGIN.md](docs/MSFS_PLUGIN.md) for full setup and installation instructions.
+
+**Pre-built .exe** — Download `msfs-gyro-sender.exe` from [GitHub Actions](../../actions) and run `msfs-gyro-sender.exe COM6`. No Python needed.
+
+**From source:**
+
+```sh
+cd msfs-sender
+pip install -r requirements.txt
+python -m msfs_sender COM6           # default: 20Hz, 115200 baud
+python -m msfs_sender COM6 --hz 30   # faster updates
 ```
 
 ## License

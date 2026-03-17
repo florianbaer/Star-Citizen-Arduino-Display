@@ -1,0 +1,12 @@
+[project]
+name = "msfs-sender"
+version = "0.1.0"
+description = "MSFS 2024 attitude sender for ESP32 gyroscope display"
+requires-python = ">=3.10"
+dependencies = [
+    "SimConnect>=0.6",
+    "pyserial>=3.5",
+]
+
+[project.scripts]
+msfs-sender = "msfs_sender.__main__:main"
