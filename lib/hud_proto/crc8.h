@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/// CRC8/MAXIM (polynomial 0x31, init 0x00).
+/// CRC-8 poly 0x31 init 0x00 (non-reflected).
 /// Must match the Rust implementation in proto/src/crc8.rs.
 static inline uint8_t crc8(const uint8_t* data, size_t len) {
   uint8_t crc = 0x00;

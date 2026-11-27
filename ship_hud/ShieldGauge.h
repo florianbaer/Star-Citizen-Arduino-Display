@@ -32,7 +32,18 @@ public:
     _sh = createArc(size, cfg.width, rotation, _halfSpan, _halfSpan + 1, initColor);
   }
 
+  /// No data: hide the shield arc (track stays visible). Change-only.
+  void setUnknown() {
+    if (_shown == -2) return;
+    lv_obj_add_flag(_sh, LV_OBJ_FLAG_HIDDEN);
+    _shown = -2;
+  }
+
+  bool isKnown() const { return _shown != -2; }
+
   void setValue(uint8_t val) {
+    if (_shown == (int)val) return;  // change-only: LVGL invalidates on every setter call
+    if (_shown == -2) lv_obj_remove_flag(_sh, LV_OBJ_FLAG_HIDDEN);
     ensureColors();
     int half = ((int)val * _halfSpan) / 255;
     int start = _halfSpan - half;
@@ -45,6 +56,7 @@ public:
     lv_obj_set_style_arc_color(_sh, c, LV_PART_MAIN);
 
     _value = val;
+    _shown = val;
   }
 
   uint8_t value() const { return _value; }
@@ -56,6 +68,7 @@ private:
   ShieldGaugeConfig _cfg;
   int _halfSpan;
   uint8_t _value = 0;
+  int _shown = -1;  // -1 never drawn, -2 unknown, 0..255 value
 
   lv_obj_t* _bg;
   lv_obj_t* _sh;
