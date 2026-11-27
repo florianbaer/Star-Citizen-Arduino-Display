@@ -4,6 +4,16 @@ Status: sender and firmware are implemented and tested offline against a mock se
 
 A spaceship HUD for the **ESP32-2432S024C** (Cheap Yellow Display), built with LVGL. A PC-side sender reads Star Citizen's gRPC telemetry stream (or generates random demo data) and forwards compact binary frames over USB serial. The display shows 4 shield arc gauges, 2 fuel bars, gear / quantum / decoupled indicators, master mode, vehicle name, an annunciator-driven alert indicator, and an on-foot screen (health, oxygen).
 
+## Screenshots
+
+| In vehicle | Damaged (alert) |
+|---|---|
+| ![In vehicle](docs/screenshots/vehicle.png) | ![Damaged](docs/screenshots/damaged.png) |
+| **On foot** | **No signal** |
+| ![On foot](docs/screenshots/on_foot.png) | ![No signal](docs/screenshots/no_signal.png) |
+
+Rendered on the PC from the real sketch with `tools/hud-sim` (`build.bat`, then `hud_sim.exe <scenario> out.ppm` and `python ppm2png.py out.ppm out.png`).
+
 ## Hardware
 
 - **Board**: ESP32-2432S024C (2.4" 320x240 ILI9341, capacitive touch CST816S)
