@@ -29,3 +29,4 @@ Thumbs.db
 # Rust workspace
 /target/
 /schema/probe-*/
+tools/hud-sim/build/
