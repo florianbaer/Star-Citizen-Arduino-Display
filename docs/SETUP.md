@@ -46,7 +46,6 @@ Replace `User_Setup.h` in your TFT_eSPI library folder (`Arduino/libraries/TFT_e
 #define TFT_CS   15
 #define TFT_DC    2
 #define TFT_RST  -1
-#define TFT_BL   21
 
 #define USE_HSPI_PORT
 
@@ -64,36 +63,11 @@ Replace `User_Setup.h` in your TFT_eSPI library folder (`Arduino/libraries/TFT_e
 #define SPI_TOUCH_FREQUENCY  2500000
 ```
 
+Do not define `TFT_BL`: the backlight is GPIO 27, which the sketch drives itself, and GPIO 21 is `TOUCH_INT`. (Do not define `TFT_BACKLIGHT_ON` either.)
+
 ### 5. Configure LVGL
 
-Copy `lv_conf.h` next to the lvgl library folder (e.g. `Arduino/libraries/lv_conf.h`, **not** inside `lvgl/`):
-
-```cpp
-#ifndef LV_CONF_H
-#define LV_CONF_H
-
-#ifndef __ASSEMBLER__
-#include <stdint.h>
-#endif
-
-#define LV_USE_DEV_VERSION
-#define LV_COLOR_DEPTH 16
-#define LV_MEM_CUSTOM 0
-#define LV_MEM_SIZE (48U * 1024U)
-#define LV_DEF_REFR_PERIOD 33
-#define LV_DEF_INDEV_READ_PERIOD 50
-#define LV_USE_TFT_ESPI 1
-
-#define LV_FONT_MONTSERRAT_14 1
-#define LV_FONT_DEFAULT &lv_font_montserrat_14
-
-#define LV_USE_SLIDER 1
-#define LV_USE_LABEL  1
-#define LV_USE_BTN    1
-#define LV_USE_LOG 0
-
-#endif
-```
+Copy `include/lv_conf.h` from this repo next to the lvgl library folder (e.g. `Arduino/libraries/lv_conf.h`, **not** inside `lvgl/`).
 
 ### 6. Upload
 
@@ -103,47 +77,9 @@ Open `ship_hud/ship_hud.ino` and upload.
 
 ## PlatformIO
 
-### 1. Create `platformio.ini`
+### 1. Configuration
 
-```ini
-[env:esp32]
-platform = espressif32@6.10.0
-board = esp32dev
-framework = arduino
-
-monitor_speed = 115200
-upload_speed = 921600
-
-lib_deps =
-    lvgl/lvgl@^9.2.2
-    bodmer/TFT_eSPI@^2.5.43
-
-build_flags =
-    -DLV_CONF_INCLUDE_SIMPLE
-    -DUSER_SETUP_LOADED
-    -DILI9341_2_DRIVER
-    -DTFT_WIDTH=240
-    -DTFT_HEIGHT=320
-    -DTFT_MISO=12
-    -DTFT_MOSI=13
-    -DTFT_SCLK=14
-    -DTFT_CS=15
-    -DTFT_DC=2
-    -DTFT_RST=-1
-    -DTFT_BL=21
-    -DUSE_HSPI_PORT
-    -DLOAD_GLCD
-    -DLOAD_FONT2
-    -DLOAD_FONT4
-    -DLOAD_FONT6
-    -DLOAD_FONT7
-    -DLOAD_FONT8
-    -DLOAD_GFXFF
-    -DSMOOTH_FONT
-    -DSPI_FREQUENCY=55000000
-    -DSPI_READ_FREQUENCY=20000000
-    -DSPI_TOUCH_FREQUENCY=2500000
-```
+The repo ships `platformio.ini`; run `pio run`.
 
 ### 2. Build & Upload
 
@@ -152,4 +88,12 @@ pio run -t upload
 pio device monitor
 ```
 
-The `lib/hud_widgets/` and `lib/hud_proto/` folders are automatically picked up by PlatformIO.
+PlatformIO compiles the sketch in `ship_hud/` (`src_dir = ship_hud`), so it uses the same header copies as the Arduino IDE.
+
+## ESP32 core versions
+
+The Arduino IDE instructions above say core **3.2.0**, while PlatformIO `espressif32@6.10.0` uses Arduino core **2.0.x**. `AlertIndicator.h` supports both (the `ledc` API differs). Only the 2.x path is compile-checked by PlatformIO.
+
+## Header copies
+
+After editing anything in `lib/`, run `python scripts/sync_headers.py` (use `--check` to verify). `cargo test --workspace` also enforces this.

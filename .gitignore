@@ -25,3 +25,7 @@ proto/target/
 # OS
 Thumbs.db
 .DS_Store
+
+# Rust workspace
+/target/
+/schema/probe-*/

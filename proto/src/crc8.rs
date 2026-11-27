@@ -1,4 +1,4 @@
-/// CRC8/MAXIM lookup table (polynomial 0x31, init 0x00).
+/// CRC-8 lookup table (poly 0x31, init 0x00, non-reflected).
 const CRC8_TABLE: [u8; 256] = {
     let mut table = [0u8; 256];
     let mut i = 0u16;
@@ -19,7 +19,7 @@ const CRC8_TABLE: [u8; 256] = {
     table
 };
 
-/// Compute CRC8/MAXIM over the given data.
+/// Compute CRC-8 (poly 0x31, init 0x00, non-reflected) over the given data.
 pub fn crc8(data: &[u8]) -> u8 {
     let mut crc: u8 = 0x00;
     for &byte in data {
@@ -44,5 +44,11 @@ mod tests {
     fn crc8_deterministic() {
         let data = [0x01, 0x02, 0x03, 0xFF, 0x80];
         assert_eq!(crc8(&data), crc8(&data));
+    }
+
+    #[test]
+    fn golden_telemetry_v2() {
+        // msg_type | payload of golden TELEMETRY_V2 (computed independently in Python)
+        assert_eq!(crc8(&[0x01, 0xFF, 0x80, 0x40, 0x20, 0xC8, 0x64, 0x3F]), 0x3C);
     }
 }

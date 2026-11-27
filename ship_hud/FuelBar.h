@@ -42,8 +42,20 @@ public:
     lv_label_set_text(_lbl, buf);
   }
 
+  /// No data: empty bar and "--" label. Change-only.
+  void setUnknown() {
+    if (_last == -2) return;
+    lv_bar_set_value(_bar, 0, LV_ANIM_OFF);
+    char buf[24];
+    snprintf(buf, sizeof(buf), "%s --", _cfg.label);
+    lv_label_set_text(_lbl, buf);
+    _last = -2;
+  }
+
   void setValue(uint8_t val) {
-    lv_bar_set_value(_bar, val, LV_ANIM_ON);
+    if ((int)val == _last) return;  // change-only: LVGL invalidates on every setter call
+    _last = val;
+    lv_bar_set_value(_bar, val, LV_ANIM_OFF);  // smoothing happens upstream (Smoother)
     char buf[24];
     int pct = (val * 100) / 255;
     snprintf(buf, sizeof(buf), "%s %d%%", _cfg.label, pct);
@@ -54,4 +66,5 @@ private:
   FuelBarConfig _cfg;
   lv_obj_t* _bar;
   lv_obj_t* _lbl;
+  int _last = -1;  // -1 never, -2 unknown, 0..255 value
 };

@@ -21,3 +21,29 @@ static inline int cobs_decode(const uint8_t* src, size_t src_len, uint8_t* dst, 
   }
   return (int)di;
 }
+
+/// COBS-encode `src` into `dst`. Returns bytes written, or 0 if cap < len + len/254 + 1.
+/// Same algorithm as proto/src/cobs.rs::encode.
+static inline size_t cobs_encode(const uint8_t* src, size_t len, uint8_t* dst, size_t cap) {
+  if (cap < len + len / 254 + 1) return 0;
+  size_t code_idx = 0, write_idx = 1;
+  uint8_t code = 1;
+  for (size_t i = 0; i < len; i++) {
+    uint8_t byte = src[i];
+    if (byte == 0x00) {
+      dst[code_idx] = code;
+      code_idx = write_idx++;
+      code = 1;
+    } else {
+      dst[write_idx++] = byte;
+      code++;
+      if (code == 0xFF) {
+        dst[code_idx] = code;
+        code_idx = write_idx++;
+        code = 1;
+      }
+    }
+  }
+  dst[code_idx] = code;
+  return write_idx;
+}

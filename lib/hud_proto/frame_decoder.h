@@ -5,22 +5,28 @@
 #include "crc8.h"
 #include "messages.h"
 
+/// Stream decoder; mirrors proto/src/frame.rs `FrameDecoder`.
 class FrameDecoder {
 public:
-  FrameDecoder() : _pos(0), _synced(false), _ready(false), _msgType(0), _payloadLen(0) {}
+  FrameDecoder() : _pos(0), _synced(false), _overflow(false), _ready(false), _msgType(0), _payloadLen(0) {}
 
   /// Feed one byte from the serial stream.
   void feed(uint8_t byte) {
     if (byte == 0x00) {
-      if (_synced && _pos > 0) {
+      if (_synced && _pos > 0 && !_overflow) {
         decode();
       }
       _pos = 0;
+      _overflow = false;
       _synced = true;
       return;
     }
-    if (_synced && _pos < BUF_SIZE) {
-      _buf[_pos++] = byte;
+    if (_synced) {
+      if (_pos < BUF_SIZE) {
+        _buf[_pos++] = byte;
+      } else {
+        _overflow = true;
+      }
     }
   }
 
@@ -43,11 +49,12 @@ public:
 
 private:
   static const int BUF_SIZE = 72;
-  static const int DECODE_SIZE = 68;
+  static const int DECODE_SIZE = HUD_MAX_PAYLOAD + 2 + 2;
 
   uint8_t _buf[BUF_SIZE];
   int _pos;
   bool _synced;
+  bool _overflow;
 
   bool _ready;
   uint8_t _msgType;
